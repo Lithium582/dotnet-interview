@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -22,7 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TodoApi.Data\TodoApi.Data.csproj" />
+    <ProjectReference Include="..\TodoApi.Services\TodoApi.Services.csproj" />
     <ProjectReference Include="..\TodoApi\TodoApi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Data\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>
