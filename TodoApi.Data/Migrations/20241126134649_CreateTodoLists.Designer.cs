@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace TodoApi.Migrations
+namespace TodoApi.Data.Migrations
 {
     [DbContext(typeof(TodoContext))]
     [Migration("20241126134649_CreateTodoLists")]
