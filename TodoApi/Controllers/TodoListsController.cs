@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TodoApi.Services.Dtos;
-using TodoApi.Data.Models;
+using TodoApi.Services.Services;
 
 namespace TodoApi.Controllers
 {
@@ -9,25 +8,30 @@ namespace TodoApi.Controllers
     [ApiController]
     public class TodoListsController : ControllerBase
     {
-        private readonly TodoContext _context;
+        private readonly ITodoListService _service;
 
-        public TodoListsController(TodoContext context)
+        public TodoListsController(ITodoListService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        // GET: api/todolists
         [HttpGet]
-        public async Task<ActionResult<IList<TodoList>>> GetTodoLists()
+        public async Task<ActionResult<IList<TodoListDto>>> GetTodoLists()
         {
-            return Ok(await _context.TodoList.ToListAsync());
+            var todoLists = await _service.GetTodoListsAsync();
+
+            if (todoLists == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(todoLists);
         }
 
-        // GET: api/todolists/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<TodoList>> GetTodoList(long id)
+        public async Task<ActionResult<TodoListDto>> GetTodoList(long id)
         {
-            var todoList = await _context.TodoList.FindAsync(id);
+            var todoList = await _service.GetTodoListAsync(id);
 
             if (todoList == null)
             {
@@ -37,56 +41,43 @@ namespace TodoApi.Controllers
             return Ok(todoList);
         }
 
-        // PUT: api/todolists/5
-        // To protect from over-posting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<ActionResult> PutTodoList(long id, UpdateTodoList payload)
+        public async Task<ActionResult> PutTodoList(long id, UpdateTodoListDto payload)
         {
-            var todoList = await _context.TodoList.FindAsync(id);
+            var updated = await _service.UpdateTodoListAsync(id, payload);
 
-            if (todoList == null)
+            if (updated == false)
             {
                 return NotFound();
             }
 
-            todoList.Name = payload.Name;
-            await _context.SaveChangesAsync();
-
-            return Ok(todoList);
+            return Ok(true);
         }
 
-        // POST: api/todolists
-        // To protect from over-posting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<TodoList>> PostTodoList(CreateTodoList payload)
+        public async Task<ActionResult<TodoListDto>> PostTodoList(UpdateTodoListDto payload)
         {
-            var todoList = new TodoList { Name = payload.Name };
-
-            _context.TodoList.Add(todoList);
-            await _context.SaveChangesAsync();
+            var todoList = await _service.CreateTodoListAsync(payload);
 
             return CreatedAtAction("GetTodoList", new { id = todoList.Id }, todoList);
         }
 
-        // DELETE: api/todolists/5
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteTodoList(long id)
         {
-            var todoList = await _context.TodoList.FindAsync(id);
-            if (todoList == null)
+            var deleted = await _service.DeleteTodoListAsync(id);
+
+            if (!deleted)
             {
                 return NotFound();
             }
 
-            _context.TodoList.Remove(todoList);
-            await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
-        private bool TodoListExists(long id)
-        {
-            return (_context.TodoList?.Any(e => e.Id == id)).GetValueOrDefault();
-        }
+        //private bool TodoListExists(long id)
+        //{
+        //    return (_context.TodoList?.Any(e => e.Id == id)).GetValueOrDefault();
+        //}
     }
 }

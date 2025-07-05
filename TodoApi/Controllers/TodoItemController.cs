@@ -1,26 +1,24 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using TodoApi.Data.Models;
 using TodoApi.Services.Dtos;
+using TodoApi.Services.Services;
 
 namespace TodoApi.Controllers
 {
-    [Route("api/listtodoitems/{listId}")]
+    [Route("api/listTodoItems/{listId}")]
     [ApiController]
     public class TodoItemController : ControllerBase
     {
-        private readonly TodoContext _context;
+        private readonly ITodoItemService _service;
 
-        public TodoItemController(TodoContext context)
+        public TodoItemController(ITodoItemService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        [HttpGet("GetItems")]
-        public async Task<ActionResult<IList<TodoList>>> GetTodoItems(long listId)
+        [HttpGet("GetTodoItems")]
+        public async Task<ActionResult<IList<TodoItemDto>>> GetTodoItems(long listId)
         {
-            var todoItems = await _context.TodoItem.Where((item) => item.ListId == listId).ToListAsync();
+            var todoItems = await _service.GetTodoItemsAsync(listId);
 
             if (todoItems == null)
             {
@@ -30,10 +28,10 @@ namespace TodoApi.Controllers
             return Ok(todoItems);
         }
 
-        [HttpGet("GetItem/{itemId}")]
-        public async Task<ActionResult<TodoList>> GetTodoItem(long listId, long itemId)
+        [HttpGet("GetTodoItem/{itemId}")]
+        public async Task<ActionResult<TodoListDto>> GetTodoItem(long listId, long itemId)
         {
-            var todoItem = await _context.TodoItem.FirstAsync((item) => item.ListId == listId && item.Id == itemId);
+            var todoItem = await _service.GetTodoItemAsync(listId, itemId);
 
             if (todoItem == null)
             {
@@ -44,47 +42,35 @@ namespace TodoApi.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<TodoItem>> PostTodoItem(CreateTodoItem payload, long listId)
+        public async Task<ActionResult<TodoItemDto>> CreateTodoItemAsync(UpdateTodoItemDto payload, long listId)
         {
-            var todoItem = new TodoItem { ListId = listId, Title = payload.Title, Description = payload.Description };
-
-            _context.TodoItem.Add(todoItem);
-            await _context.SaveChangesAsync();
+            var todoItem = await _service.CreateTodoItemAsync(payload, listId);
 
             return CreatedAtAction("GetTodoItem", new { id = todoItem.Id }, todoItem);
         }
 
         [HttpPut("{itemId}")]
-        public async Task<ActionResult> PutTodoItem(long listId, long itemId, UpdateTodoItem payload)
+        public async Task<ActionResult> PutTodoItem(UpdateTodoItemDto payload, long listId, long itemId)
         {
-            var todoItem = await _context.TodoItem.FirstAsync((item) => item.ListId == listId && item.Id == itemId);
+            var updated = await _service.UpdateTodoItemAsync(payload, listId, itemId);
 
-            if (todoItem == null)
+            if (updated == false)
             {
                 return NotFound();
             }
 
-            todoItem.Title = payload.Title;
-            todoItem.Description = payload.Description;
-            todoItem.Completed = payload.Completed;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(todoItem);
+            return Ok(true);
         }
 
         [HttpDelete("{itemId}")]
         public async Task<ActionResult> DeleteTodoList(long listId, long itemId)
         {
-            var todoItem = await _context.TodoItem.FirstAsync((item) => item.ListId == listId && item.Id == itemId);
+            var deleted = await _service.DeleteTodoItemAsync(listId, itemId);
 
-            if (todoItem == null)
+            if (!deleted)
             {
                 return NotFound();
             }
-
-            _context.TodoItem.Remove(todoItem);
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }

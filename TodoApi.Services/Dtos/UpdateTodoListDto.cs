@@ -1,6 +1,6 @@
 namespace TodoApi.Services.Dtos;
 
-public class UpdateTodoList
+public class UpdateTodoListDto
 {
     public required string Name { get; set; }
 }
