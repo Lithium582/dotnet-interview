@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace TodoApi.Migrations
+namespace TodoApi.Data.Migrations
 {
     /// <inheritdoc />
     public partial class CreateTodoLists : Migration

@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="12.0.1" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.0-*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -15,6 +17,11 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.0-*" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="7.0.0-*" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TodoApi.Data\TodoApi.Data.csproj" />
+    <ProjectReference Include="..\TodoApi.Services\TodoApi.Services.csproj" />
   </ItemGroup>
 
 </Project>
