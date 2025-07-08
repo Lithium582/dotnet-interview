@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 using TodoApi.Data.Models;
 using TodoApi.Services.Dtos;
 
