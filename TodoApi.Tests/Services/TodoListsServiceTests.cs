@@ -1,126 +1,168 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using TodoApi.Controllers;
 using TodoApi.Data.Models;
+using TodoApi.Services;
 using TodoApi.Services.Dtos;
+using TodoApi.Services.Services;
 
 namespace TodoApi.Tests.Services;
 
-#nullable disable
 public class TodoListsServiceTests
 {
-    //private DbContextOptions<TodoContext> DatabaseContextOptions()
-    //{
-    //    return new DbContextOptionsBuilder<TodoContext>()
-    //        .UseInMemoryDatabase(Guid.NewGuid().ToString())
-    //        .Options;
-    //}
+    #region "Constructor and utils"
+    private readonly IMapper _mapper;
+    private readonly TodoListService _service;
 
-    //private void PopulateDatabaseContext(TodoContext context)
-    //{
-    //    context.TodoList.Add(new TodoList { Id = 1, Name = "Task 1" });
-    //    context.TodoList.Add(new TodoList { Id = 2, Name = "Task 2" });
-    //    context.SaveChanges();
-    //}
+    public TodoListsServiceTests()
+    {
+        var configuration = new MapperConfiguration(cfg =>
+        {
+            cfg.AddProfile<MappingProfile>();
+        });
 
-    //[Fact]
-    //public async Task GetTodoList_WhenCalled_ReturnsTodoListList()
-    //{
-    //    using (var context = new TodoContext(DatabaseContextOptions()))
-    //    {
-    //        PopulateDatabaseContext(context);
+        _mapper = configuration.CreateMapper();
+        var context = new TodoContext(DatabaseContextOptions());
+        _service = new TodoListService(context, _mapper);
+        PopulateDatabaseContext(context);
+    }
 
-    //        var controller = new TodoListsController(context);
+    private DbContextOptions<TodoContext> DatabaseContextOptions()
+    {
+        return new DbContextOptionsBuilder<TodoContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+    }
 
-    //        var result = await controller.GetTodoLists();
+    private void PopulateDatabaseContext(TodoContext context)
+    {
+        context.TodoList.Add(new TodoList { Id = 1, Name = "Task 1" });
+        context.TodoList.Add(new TodoList { Id = 2, Name = "Task 2" });
+        context.SaveChanges();
+    }
+    #endregion
 
-    //        Assert.IsType<OkObjectResult>(result.Result);
-    //        Assert.Equal(2, ((result.Result as OkObjectResult).Value as IList<TodoList>).Count);
-    //    }
-    //}
+    #region "Gets"
+    [Fact]
+    public async Task GetTodoListsAsync_ReturnsAllLists()
+    {
+        // Act
+        var result = await _service.GetTodoListsAsync();
 
-    //[Fact]
-    //public async Task GetTodoList_WhenCalled_ReturnsTodoListById()
-    //{
-    //    using (var context = new TodoContext(DatabaseContextOptions()))
-    //    {
-    //        PopulateDatabaseContext(context);
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Task 1", result[0].Name);
+    }
 
-    //        var controller = new TodoListsController(context);
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task GetTodoListAsync_ReturnsOneList(long listId)
+    {
+        // Act
+        var result = await _service.GetTodoListAsync(listId);
 
-    //        var result = await controller.GetTodoList(1);
+        // Assert
+        Assert.Equal(listId, result.Id);
+    }
 
-    //        Assert.IsType<OkObjectResult>(result.Result);
-    //        Assert.Equal(1, ((result.Result as OkObjectResult).Value as TodoList).Id);
-    //    }
-    //}
+    [Theory]
+    [InlineData(3)]
+    [InlineData(4)]
+    public async Task GetTodoListAsync_ReturnsNull_WhenListDoesNotExist(long listId)
+    {
+        // Act
+        var result = await _service.GetTodoListAsync(listId);
 
-    //[Fact]
-    //public async Task PutTodoList_WhenTodoListDoesntExist_ReturnsBadRequest()
-    //{
-    //    using (var context = new TodoContext(DatabaseContextOptions()))
-    //    {
-    //        PopulateDatabaseContext(context);
+        // Assert
+        Assert.Null(result);
+    }
 
-    //        var controller = new TodoListsController(context);
+    #endregion
 
-    //        var result = await controller.PutTodoList(
-    //            3,
-    //            new UpdateTodoListDto { Name = "Task 3" }
-    //        );
+    #region "Puts"
+    [Fact]
+    public async Task UpdateTodoListAsync_ReturnsFalse_WhenListDoesNotExist()
+    {
+        // Arrange
+        var updateDto = new UpdateTodoListDto { Name = "Task 1 bis" };
 
-    //        Assert.IsType<NotFoundResult>(result);
-    //    }
-    //}
+        // Act
+        var result = await _service.UpdateTodoListAsync(3, updateDto);
 
-    //[Fact]
-    //public async Task PutTodoList_WhenCalled_UpdatesTheTodoList()
-    //{
-    //    using (var context = new TodoContext(DatabaseContextOptions()))
-    //    {
-    //        PopulateDatabaseContext(context);
+        // Assert
+        Assert.False(result);
+    }
 
-    //        var controller = new TodoListsController(context);
+    [Fact]
+    public async Task UpdateTodoListAsync_ReturnsTrue_WhenListExists()
+    {
+        // Arrange
+        var updateDto = new UpdateTodoListDto { Name = "Task 2 bis" };
 
-    //        var todoList = await context.TodoList.Where(x => x.Id == 2).FirstAsync();
-    //        var result = await controller.PutTodoList(
-    //            todoList.Id,
-    //            new UpdateTodoListDto { Name = "Changed Task 2" }
-    //        );
+        // Act
+        var result = await _service.UpdateTodoListAsync(2, updateDto);
 
-    //        Assert.IsType<OkObjectResult>(result);
-    //    }
-    //}
+        // Assert
+        Assert.True(result);
 
-    //[Fact]
-    //public async Task PostTodoList_WhenCalled_CreatesTodoList()
-    //{
-    //    using (var context = new TodoContext(DatabaseContextOptions()))
-    //    {
-    //        PopulateDatabaseContext(context);
+        var updated = await _service.GetTodoListAsync(2);
+        Assert.Equal("Task 2 bis", updated.Name);
+    }
 
-    //        var controller = new TodoListsController(context);
+    #endregion
 
-    //        var result = await controller.PostTodoList(new UpdateTodoListDto { Name = "Task 3" });
+    #region "Posts"
+    [Fact]
+    public async Task CreateTodoListAsync_ReturnsTodoList_WhenListCreated()
+    {
+        // Arrange
+        var updateDto = new UpdateTodoListDto { Name = "Task 3" };
 
-    //        Assert.IsType<CreatedAtActionResult>(result.Result);
-    //        Assert.Equal(3, context.TodoList.Count());
-    //    }
-    //}
+        // Act
+        var result = await _service.CreateTodoListAsync(updateDto);
 
-    //[Fact]
-    //public async Task DeleteTodoList_WhenCalled_RemovesTodoList()
-    //{
-    //    using (var context = new TodoContext(DatabaseContextOptions()))
-    //    {
-    //        PopulateDatabaseContext(context);
+        // Assert
+        Assert.Equal(3, result.Id);
+    }
 
-    //        var controller = new TodoListsController(context);
+    [Fact]
+    public async Task CreateTodoListAsync_ReturnsException_WhenDtoInvalid()
+    {
+        // Arrange
+        var createDto = new UpdateTodoListDto { Name = null };
 
-    //        var result = await controller.DeleteTodoList(2);
+        // Act // Assert
+        await Assert.ThrowsAsync<DbUpdateException>(() =>
+            _service.CreateTodoListAsync(createDto));
+    }
 
-    //        Assert.IsType<NoContentResult>(result);
-    //        Assert.Equal(1, context.TodoList.Count());
-    //    }
-    //}
+    #endregion
+
+    #region "Deletes"
+
+    [Fact]
+    public async Task DeleteTodoListAsync_ReturnsTrue_WhenDeleteSuccess()
+    {
+        // Act
+        var result = await _service.DeleteTodoListAsync(2);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task DeleteTodoListAsync_ReturnsFalse_WhenDeleteFails()
+    {
+        // Act
+        var result = await _service.DeleteTodoListAsync(5);
+
+        // Assert
+        Assert.False(result);
+    }
+
+
+    #endregion
 }

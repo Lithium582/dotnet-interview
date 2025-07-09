@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using System.Collections.Generic;
 using TodoApi.Controllers;
-using TodoApi.Data.Models;
 using TodoApi.Services.Dtos;
 using TodoApi.Services.Services;
 
@@ -11,6 +9,7 @@ namespace TodoApi.Tests.Controllers;
 #nullable disable
 public class TodoListsControllerTests
 {
+    #region "Constructor and utils"
     private readonly Mock<ITodoListService> _mockService;
     private readonly TodoListsController _controller;
 
@@ -20,7 +19,7 @@ public class TodoListsControllerTests
         _controller = new TodoListsController(_mockService.Object);
     }
 
-    private List<TodoListDto> AssertMockService()
+    private List<TodoListDto> GetFakeTodoLists()
     {
         return new List<TodoListDto>
         {
@@ -29,11 +28,14 @@ public class TodoListsControllerTests
         };
     }
 
+    #endregion
+
+    #region "Gets"
     [Fact]
     public async Task GetTodoList_WhenCalled_ReturnsTodoListList()
     {
         // Arrange
-        var expected = AssertMockService();
+        var expected = GetFakeTodoLists();
 
         _mockService
             .Setup(s => s.GetTodoListsAsync())
@@ -43,8 +45,8 @@ public class TodoListsControllerTests
         var result = await _controller.GetTodoLists();
 
         // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsType<List<TodoListDto>>(okResult.Value);
+        OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+        List<TodoListDto> returnValue = Assert.IsType<List<TodoListDto>>(okResult.Value);
 
         Assert.Equal("Test List 1", returnValue[0].Name);
         Assert.Equal(2, returnValue.Count);
@@ -56,7 +58,7 @@ public class TodoListsControllerTests
     public async Task GetTodoList_WhenCalled_ReturnsTodoListById(long listId)
     {
         // Arrange
-        var expected = AssertMockService();
+        var expected = GetFakeTodoLists();
 
         _mockService
             .Setup(s => s.GetTodoListAsync(listId))
@@ -64,10 +66,12 @@ public class TodoListsControllerTests
 
         // Act
         var result = await _controller.GetTodoList(listId);
+        OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+        TodoListDto dto = Assert.IsType<TodoListDto>(okResult.Value);
 
         // Assert
         Assert.IsType<OkObjectResult>(result.Result);
-        Assert.Equal(listId, ((result.Result as OkObjectResult).Value as TodoListDto).Id);
+        Assert.Equal(listId, dto.Id);
     }
 
     [Theory]
@@ -76,27 +80,31 @@ public class TodoListsControllerTests
     public async Task GetTodoList_WhenCalled_ReturnsNullWhenNotExists(long listId)
     {
         // Arrange
-        var expected = AssertMockService();
+        var expected = GetFakeTodoLists();
 
         _mockService
             .Setup(s => s.GetTodoListAsync(listId))
             .ReturnsAsync(expected.FirstOrDefault(l => l.Id == listId));
 
         // Act
-        var result = await _controller.GetTodoList(1);
+        var result = await _controller.GetTodoList(listId);
+        NotFoundResult notFoundResult = Assert.IsType<NotFoundResult>(result.Result);
 
         // Assert
         Assert.IsType<NotFoundResult>(result.Result);
-        Assert.Equal(404, (result.Result as NotFoundResult).StatusCode);
+        Assert.Equal(404, notFoundResult.StatusCode);
     }
 
+    #endregion
+
+    #region "Puts"
     [Theory]
     [InlineData(3)]
     [InlineData(4)]
-    public async Task PutTodoList_WhenTodoListDoesntExist_ReturnsBadRequest(long listId)
+    public async Task PutTodoList_WhenTodoListDoesntExist_ReturnsNotFound(long listId)
     {
         // Arrange
-        var expected = AssertMockService();
+        var expected = GetFakeTodoLists();
         UpdateTodoListDto listToPut = new UpdateTodoListDto { Name = "lista 3" };
 
         _mockService
@@ -105,10 +113,11 @@ public class TodoListsControllerTests
 
         // Act
         var result = await _controller.PutTodoList(listId, listToPut);
+        NotFoundResult notFoundResult = Assert.IsType<NotFoundResult>(result.Result);
 
         // Assert
         Assert.IsType<NotFoundResult>(result.Result);
-        Assert.Equal(404, (result.Result as NotFoundResult).StatusCode);
+        Assert.Equal(404, notFoundResult.StatusCode);
     }
 
     [Theory]
@@ -125,11 +134,16 @@ public class TodoListsControllerTests
 
         // Act
         var result = await _controller.PutTodoList(listId, listToPut);
+        OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+        bool dto = Assert.IsType<bool>(okResult.Value);
 
         // Assert
         Assert.IsType<OkObjectResult>(result.Result);
-        Assert.True((bool)(result.Result as OkObjectResult).Value);
+        Assert.True(dto);
     }
+    #endregion
+
+    #region "Posts"
 
     [Fact]
     public async Task PostTodoList_WhenCalled_CreatesTodoList()
@@ -150,12 +164,17 @@ public class TodoListsControllerTests
 
         // Act
         var result = await _controller.PostTodoList(listToPost);
+        CreatedAtActionResult createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        TodoListDto dto = Assert.IsType<TodoListDto>(createdAtActionResult.Value);
 
         // Assert
         Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.Equal(3, ((result.Result as CreatedAtActionResult).Value as TodoListDto).Id);
+        Assert.Equal(3, dto.Id);
     }
 
+    #endregion
+
+    #region "Deletes"
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -191,4 +210,6 @@ public class TodoListsControllerTests
         // Assert
         Assert.IsType<NotFoundResult>(result.Result);
     }
+
+    #endregion
 }

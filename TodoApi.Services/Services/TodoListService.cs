@@ -48,7 +48,7 @@ namespace TodoApi.Services.Services
 
         public async Task<bool> UpdateTodoListAsync(long listId, UpdateTodoListDto todoListDto)
         {
-            var todoList = await _context.TodoList.FirstAsync((l) => l.Id == listId);
+            var todoList = await _context.TodoList.FirstOrDefaultAsync((l) => l.Id == listId);
 
             if (todoList != null)
             {
@@ -64,7 +64,7 @@ namespace TodoApi.Services.Services
 
         public async Task<bool> DeleteTodoListAsync(long listId)
         {
-            var todoList = await _context.TodoList.FirstAsync((item) => item.Id == listId);
+            var todoList = await _context.TodoList.FirstOrDefaultAsync((item) => item.Id == listId);
 
             if (todoList != null)
             {

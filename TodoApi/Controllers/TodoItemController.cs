@@ -50,7 +50,7 @@ namespace TodoApi.Controllers
         }
 
         [HttpPut("{itemId}")]
-        public async Task<ActionResult> PutTodoItem(UpdateTodoItemDto payload, long listId, long itemId)
+        public async Task<ActionResult<bool>> PutTodoItem(UpdateTodoItemDto payload, long listId, long itemId)
         {
             var updated = await _service.UpdateTodoItemAsync(payload, listId, itemId);
 
@@ -63,7 +63,7 @@ namespace TodoApi.Controllers
         }
 
         [HttpDelete("{itemId}")]
-        public async Task<ActionResult> DeleteTodoList(long listId, long itemId)
+        public async Task<ActionResult<bool>> DeleteTodoList(long listId, long itemId)
         {
             var deleted = await _service.DeleteTodoItemAsync(listId, itemId);
 
