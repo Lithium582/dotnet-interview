@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TodoApi.Data\TodoApi.Data.csproj" />
     <ProjectReference Include="..\TodoApi.Services\TodoApi.Services.csproj" />
+    <ProjectReference Include="..\TodoApi.SyncServices\TodoApi.SyncServices.csproj" />
   </ItemGroup>
 
 </Project>
