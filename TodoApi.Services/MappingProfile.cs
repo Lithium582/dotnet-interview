@@ -17,11 +17,14 @@ namespace TodoApi.Services
 
             CreateMap<TodoItemDto, TodoItem>();
 
-
             CreateMap<TodoList, TodoListDto>();
             CreateMap<UpdateTodoListDto, TodoList>();
 
             CreateMap<TodoListDto, TodoList>();
+
+            // Sync logic
+            //CreateMap<ExternalTodoItem, TodoItem>();
+            //CreateMap<TodoItem, ExternalTodoItem>();
         }
     }
 }

@@ -1,50 +1,92 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using TodoApi.SyncServices.ExternalAPI.Auxiliars;
 using TodoApi.SyncServices.ExternalAPI.Contracts;
 
 namespace TodoApi.SyncServices.ExternalAPI
 {
     public class FakeExternalAPI : IExternalAPI
     {
-        private readonly List<ExternalTodoItem> _fakeStorage;
+        private readonly List<ExternalTodoList> _fakeLists;
 
         public FakeExternalAPI()
         {
-            _fakeStorage = new List<ExternalTodoItem>
-        {
-            new ExternalTodoItem { ExternalId = "abc123", Name = "External Task A", IsComplete = false },
-            new ExternalTodoItem { ExternalId = "def456", Name = "External Task B", IsComplete = true }
-        };
+            _fakeLists = FakeDataGenerator.GenerateListsWithItems();
         }
 
-        public Task<List<ExternalTodoItem>> GetAllAsync()
+        #region "Lists"
+
+        public async Task<List<ExternalTodoList>> GetTodoListsAsync()
         {
-            // Fakes a GET to /external/todo
-            return Task.FromResult(_fakeStorage.ToList());
+            return _fakeLists.ToList();
         }
 
-        public Task SyncAsync(List<ExternalTodoItem> items)
+        public async Task<ExternalTodoList> CreateTodoListAsync(CreateExternalTodoList dto)
         {
-            // Fakes a POST to /external/todo/sync
-
-            foreach (var item in items)
+            var newList = new ExternalTodoList
             {
-                var existing = _fakeStorage.FirstOrDefault(x => x.ExternalId == item.ExternalId);
-                if (existing != null)
-                {
-                    existing.Name = item.Name;
-                    existing.IsComplete = item.IsComplete;
-                }
-                else
-                {
-                    _fakeStorage.Add(item);
-                }
-            }
+                Id = Guid.NewGuid().ToString(),
+                SourceId = dto.SourceId,
+                Name = dto.Name,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now,
+                TodoItems = new List<ExternalTodoItem>()
+            };
 
-            return Task.CompletedTask;
+            _fakeLists.Add(newList);
+            return newList;
+
         }
+
+        public async Task<ExternalTodoList> UpdateTodoListAsync(string listId, UpdateExternalTodoList dto)
+        {
+            var list = _fakeLists.FirstOrDefault(l => l.Id == listId);
+            if (list == null) throw new Exception("List not found");
+
+            list.Name = dto.Name;
+            list.UpdatedAt = DateTime.Now;
+            return list;
+        }
+
+        public async Task DeleteTodoListAsync(string listId)
+        {
+            var list = _fakeLists.FirstOrDefault(l => l.Id == listId);
+            if (list != null)
+                _fakeLists.Remove(list);
+
+            //return Task.CompletedTask;
+        }
+
+        #endregion
+
+        #region "Items"
+
+        public async Task<ExternalTodoItem> UpdateTodoItemAsync(string listId, string itemId, UpdateExternalTodoItem dto)
+        {
+            var list = _fakeLists.FirstOrDefault(l => l.Id == listId);
+            if (list == null) throw new Exception("List not found");
+
+            var item = list.TodoItems.FirstOrDefault(i => i.Id == itemId);
+            if (item == null) throw new Exception("Item not found");
+
+            //item.Title = dto.Title;
+            item.Description = dto.Description;
+            item.Completed = dto.Completed;
+            item.UpdatedAt = DateTime.Now;
+
+            return item;
+        }
+
+        public async Task DeleteTodoItemAsync(string listId, string itemId)
+        {
+            var list = _fakeLists.FirstOrDefault(l => l.Id == listId);
+            //if (list == null) return Task.CompletedTask;
+
+            var item = list.TodoItems.FirstOrDefault(i => i.Id == itemId);
+            if (item != null)
+                list.TodoItems.Remove(item);
+
+            //return Task.CompletedTask;
+        }
+
+        #endregion
     }
 }

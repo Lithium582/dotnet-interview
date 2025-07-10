@@ -22,7 +22,7 @@ namespace TodoApi.Services.Services
             var todoItems = 
                 await _context.TodoItem
                 .Include(i => i.List)
-                .Where(i  => i.ListId == listId).ToListAsync();
+                .Where(i  => i.ListId == listId || (listId == -1)).ToListAsync();
 
             return _mapper.Map<IList<TodoItemDto>>(todoItems);
         }
