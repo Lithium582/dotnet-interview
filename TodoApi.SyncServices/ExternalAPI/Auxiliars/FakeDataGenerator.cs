@@ -1,4 +1,4 @@
-﻿using TodoApi.SyncServices.ExternalAPI.Contracts;
+﻿using TodoApi.ExternalContracts.Contracts;
 
 namespace TodoApi.SyncServices.ExternalAPI.Auxiliars
 {

@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace TodoApi.SyncServices.ExternalAPI.Contracts
+namespace TodoApi.ExternalContracts.Contracts
 {
     public interface IExternalAPI
     {

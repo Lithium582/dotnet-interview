@@ -20,7 +20,7 @@ namespace TodoApi.Controllers
             var localTodoItems = _todoItemService.GetTodoItemsAsync(-1);
             //var externalTodoItems = _syncService.GetAllAsync();
 
-            bool res = await _syncService.SyncTodoItemsAsync();
+            bool res = await _syncService.SyncTodoListsAsync();
 
             return Ok("Sync succeeded.");
         }

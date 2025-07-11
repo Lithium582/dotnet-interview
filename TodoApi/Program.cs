@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using TodoApi.ExternalContracts.Contracts;
 using TodoApi.Services.Services;
 using TodoApi.SyncServices.ExternalAPI;
-using TodoApi.SyncServices.ExternalAPI.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 builder

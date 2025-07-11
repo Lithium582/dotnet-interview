@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace TodoApi.SyncServices.ExternalAPI.Contracts
+namespace TodoApi.ExternalContracts.Contracts
 {
     public class ExternalTodoItem
     {

@@ -6,9 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\TodoApi.ExternalContracts\TodoApi.ExternalContracts.csproj" />
-    <ProjectReference Include="..\TodoApi.Services\TodoApi.Services.csproj" />
-  </ItemGroup>
-
 </Project>

@@ -10,6 +10,7 @@ namespace TodoApi.Services.Dtos
     public class TodoItemDto
     {
         public string ListName { get; set; }
+        public long ListId { get; set; }
         public long Id { get; set; }
         public bool Completed { get; set; }
         public string Title { get; set; }

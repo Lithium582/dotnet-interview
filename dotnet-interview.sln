@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TodoApi.Services", "TodoApi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TodoApi.SyncServices", "TodoApi.SyncServices\TodoApi.SyncServices.csproj", "{10F6FA1E-C1A9-4902-B1D5-359F7DA3889E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TodoApi.ExternalContracts", "TodoApi.ExternalContracts\TodoApi.ExternalContracts.csproj", "{B2A2AE76-1E53-4451-AB9D-102DF3338E44}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{10F6FA1E-C1A9-4902-B1D5-359F7DA3889E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10F6FA1E-C1A9-4902-B1D5-359F7DA3889E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10F6FA1E-C1A9-4902-B1D5-359F7DA3889E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2A2AE76-1E53-4451-AB9D-102DF3338E44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2A2AE76-1E53-4451-AB9D-102DF3338E44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2A2AE76-1E53-4451-AB9D-102DF3338E44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2A2AE76-1E53-4451-AB9D-102DF3338E44}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

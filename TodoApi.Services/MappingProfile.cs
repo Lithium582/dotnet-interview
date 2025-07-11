@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using TodoApi.Data.Models;
+using TodoApi.ExternalContracts.Contracts;
 using TodoApi.Services.Dtos;
 
 namespace TodoApi.Services
@@ -12,7 +13,12 @@ namespace TodoApi.Services
                 .ForMember(
                     dest => dest.ListName,
                     opt => opt.MapFrom(src => src.List != null ? src.List.Name : string.Empty)
+                )
+                .ForMember(
+                    dest => dest.ListId,
+                    opt => opt.MapFrom(src => src.List != null ? src.List.Id : 0)
                 );
+
             CreateMap<UpdateTodoItemDto, TodoItem>();
 
             CreateMap<TodoItemDto, TodoItem>();
@@ -23,8 +29,10 @@ namespace TodoApi.Services
             CreateMap<TodoListDto, TodoList>();
 
             // Sync logic
-            //CreateMap<ExternalTodoItem, TodoItem>();
-            //CreateMap<TodoItem, ExternalTodoItem>();
+            CreateMap<ExternalTodoItem, UpdateTodoItemDto>()
+                .ForMember(dest => dest.Title, opt => opt.Ignore()) // si no existe en la API externa
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+                .ForMember(dest => dest.Completed, opt => opt.MapFrom(src => src.Completed));
         }
     }
 }

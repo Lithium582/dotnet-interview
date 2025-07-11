@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TodoApi.Data\TodoApi.Data.csproj" />
+    <ProjectReference Include="..\TodoApi.ExternalContracts\TodoApi.ExternalContracts.csproj" />
   </ItemGroup>
 
 </Project>
