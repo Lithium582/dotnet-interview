@@ -1,0 +1,18 @@
+Un [HttpGet("status")] para saber si todo está sincronizado o pasar parámetros para sincronizar una sola lista
+- Created a TodoApi.SyncServices project where I added all the logic about the connection with External API. "ExternalTodoApiClient" class is an empty class that, when connected to the actual External API, will be used to sync items
+- I registered the client on the Program.cs with a fake URL. Changing this URL is needed when this class is ready to work with ExternalAPI
+- 
+
+SOME CHANGES NEEDED
+- It was decided to create new CreateDate and UpdateDate attributes on TodoList and TodoItem. This way, is easy to get if a List or Item was modified on external API when syncing
+- It was also decided to manage deletions as logical deletions. Again, it make easier to manage deletions on external API gracefully
+
+ASSUMPTIONS
+- I assumed that I cannot modify the models we created on the tech interview. So I worked over the assumption that there was a difference in models
+
+IMPROVEMENTS
+- We could add some filters to the ExternalAPI. For example, just update the not completed Items. Or maybe mark some items as "can't modify" and then try to avoid them
+I didn't try that way because ExternalAPI just have a GetAll, but I think we can improve it a lot
+
+- I didn't add a real exception control. Thought about it but didn't want to add more complexity to this test. Nevertheless, I know a prod app should have exception control, so an unexpected exception don't break the app
+- A couple of new endpoints could be created on external API, so the sync service can send a list of TodoLists to create or update. Same thing with TodoItems
