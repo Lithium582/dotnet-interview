@@ -21,6 +21,7 @@ namespace TodoApi.Services.Services
             var todoLists =
                 await _context.TodoList
                 .Include(l => l.Items)
+                .Where(l => !l.Deleted)
                 .ToListAsync();
 
             return _mapper.Map<IList<TodoListDto>>(todoLists);
@@ -30,7 +31,7 @@ namespace TodoApi.Services.Services
         {
             var todoList = await _context.TodoList
                 .Include((l) => l.Items)
-                .Where((l) => l.Id == listId)
+                .Where((l) => l.Id == listId && !l.Deleted)
                 .FirstOrDefaultAsync();
 
             return _mapper.Map<TodoListDto>(todoList);
@@ -39,6 +40,9 @@ namespace TodoApi.Services.Services
         public async Task<TodoListDto> CreateTodoListAsync(UpdateTodoListDto todoListDto)
         {
             var todoList = _mapper.Map<TodoList>(todoListDto);
+            todoList.UpdatedAt = DateTime.Now;
+            todoList.CreatedAt = DateTime.Now;
+            todoList.Deleted = false;
 
             _context.TodoList.Add(todoList);
             await _context.SaveChangesAsync();
@@ -48,11 +52,12 @@ namespace TodoApi.Services.Services
 
         public async Task<bool> UpdateTodoListAsync(long listId, UpdateTodoListDto todoListDto)
         {
-            var todoList = await _context.TodoList.FirstOrDefaultAsync((l) => l.Id == listId);
+            var todoList = await _context.TodoList.FirstOrDefaultAsync((l) => l.Id == listId && !l.Deleted);
 
             if (todoList != null)
             {
                 todoList.Name = todoListDto.Name;
+                todoList.UpdatedAt = DateTime.Now;
 
                 await _context.SaveChangesAsync();
 
@@ -64,11 +69,14 @@ namespace TodoApi.Services.Services
 
         public async Task<bool> DeleteTodoListAsync(long listId)
         {
-            var todoList = await _context.TodoList.FirstOrDefaultAsync((item) => item.Id == listId);
+            var todoList = await _context.TodoList.FirstOrDefaultAsync((l) => l.Id == listId && !l.Deleted);
 
             if (todoList != null)
             {
-                _context.TodoList.Remove(todoList);
+                //_context.TodoList.Remove(todoList);
+                todoList.Deleted = true;
+                todoList.UpdatedAt = DateTime.Now;
+
                 await _context.SaveChangesAsync();
 
                 return true;
