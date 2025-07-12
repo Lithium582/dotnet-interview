@@ -22,7 +22,7 @@ namespace TodoApi.Services.Services
             var todoItems = 
                 await _context.TodoItem
                 .Include(i => i.List)
-                .Where(i  => i.ListId == listId || (listId == -1)).ToListAsync();
+                .Where(i  => i.ListId == listId && !i.Deleted).ToListAsync();
 
             return _mapper.Map<IList<TodoItemDto>>(todoItems);
         }
@@ -30,8 +30,8 @@ namespace TodoApi.Services.Services
         public async Task<TodoItemDto> GetTodoItemAsync(long listId, long itemId)
         {
             var todoItem = await _context.TodoItem
-                .Include((item) => item.List)
-                .Where((item) => item.ListId == listId && item.Id == itemId)
+                .Include((i) => i.List)
+                .Where((i) => i.ListId == listId && i.Id == itemId && !i.Deleted)
                 .FirstOrDefaultAsync();
 
             return _mapper.Map<TodoItemDto>(todoItem);
@@ -40,6 +40,10 @@ namespace TodoApi.Services.Services
         public async Task<TodoItemDto> CreateTodoItemAsync(UpdateTodoItemDto todoItemDto, long listId)
         {
             var todoItem = _mapper.Map<TodoItem>(todoItemDto);
+
+            todoItem.UpdatedAt = DateTime.Now;
+            todoItem.CreatedAt = DateTime.Now;
+            todoItem.Deleted = false;
 
             _context.TodoItem.Add(todoItem);
             await _context.SaveChangesAsync();
@@ -51,13 +55,18 @@ namespace TodoApi.Services.Services
 
         public async Task<bool> UpdateTodoItemAsync(UpdateTodoItemDto todoItemDto, long listId, long itemId)
         {
-            var todoItem = await _context.TodoItem.FirstOrDefaultAsync((item) => item.ListId == listId && item.Id == itemId);
+            var todoItem = await _context.TodoItem.FirstOrDefaultAsync(
+                (i) => i.ListId == listId
+                    && i.Id == itemId
+                    && !i.Deleted
+                );
 
             if (todoItem != null)
             {
                 todoItem.Title = todoItemDto.Title;
                 todoItem.Description = todoItemDto.Description;
                 todoItem.Completed = todoItemDto.Completed;
+                todoItem.UpdatedAt = DateTime.Now;
 
                 await _context.SaveChangesAsync();
 
@@ -69,11 +78,17 @@ namespace TodoApi.Services.Services
 
         public async Task<bool> DeleteTodoItemAsync(long listId, long itemId)
         {
-            var todoItem = await _context.TodoItem.FirstOrDefaultAsync((item) => item.ListId == listId && item.Id == itemId);
+            var todoItem = await _context.TodoItem.FirstOrDefaultAsync(
+                (i) => i.ListId == listId
+                    && i.Id == itemId
+                    && !i.Deleted);
 
             if (todoItem != null)
             {
-                _context.TodoItem.Remove(todoItem);
+                //_context.TodoItem.Remove(todoItem);
+                todoItem.Deleted = true;
+                todoItem.UpdatedAt = DateTime.Now;
+
                 await _context.SaveChangesAsync();
 
                 return true;
