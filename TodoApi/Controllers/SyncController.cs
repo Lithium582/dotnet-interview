@@ -7,7 +7,7 @@ namespace TodoApi.Controllers
     public class SyncController : ControllerBase
     {
         private readonly ISyncService _syncService;
-        private readonly TodoItemService _todoItemService;
+        private readonly ITodoItemService _todoItemService;
 
         public SyncController(ISyncService syncService)
         {
@@ -17,9 +17,6 @@ namespace TodoApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Sync()
         {
-            var localTodoItems = _todoItemService.GetTodoItemsAsync(-1);
-            //var externalTodoItems = _syncService.GetAllAsync();
-
             bool res = await _syncService.SyncTodoListsAsync();
 
             return Ok("Sync succeeded.");

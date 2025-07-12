@@ -29,29 +29,27 @@ namespace TodoApi.SyncServices.Services
         {
             try
             {
-                // 1. Obtener datos de ambas fuentes
-                var localLists = await _localListService.GetTodoListsAsync(); // List<TodoListDto>
-                var externalLists = await _externalApi.GetTodoListsAsync();   // List<ExternalTodoList>
+                // Getting lists from local
+                var localLists = await _localListService.GetTodoListsAsync();
 
-                // 2. Sincronizar listas de la API externa a la BD local
+                // Getting lists from external API
+                var externalLists = await _externalApi.GetTodoListsAsync();
+
                 foreach (var externalList in externalLists)
                 {
                     var existing = localLists.FirstOrDefault(l => l.Id.ToString() == externalList.SourceId);
 
                     if (existing == null)
                     {
-                        // Crear nueva lista local
                         var toCreate = new UpdateTodoListDto { Name = externalList.Name };
                         await _localListService.CreateTodoListAsync(toCreate);
                     }
                     else if (existing.Name != externalList.Name)
                     {
-                        // Actualizar lista local
                         var toUpdate = new UpdateTodoListDto { Name = externalList.Name };
                         await _localListService.UpdateTodoListAsync(existing.Id, toUpdate);
                     }
 
-                    // 3. Sincronizar items de esta lista
                     foreach (var externalItem in externalList.TodoItems)
                     {
                         var localItems = await _localItemService.GetTodoItemsAsync(existing?.Id ?? 0);
@@ -59,7 +57,6 @@ namespace TodoApi.SyncServices.Services
 
                         if (matchingItem == null)
                         {
-                            // Crear nuevo item
                             var toCreate = _mapper.Map<UpdateTodoItemDto>(externalItem);
                             toCreate.ListId = existing?.Id ?? 0;
                             await _localItemService.CreateTodoItemAsync(toCreate, toCreate.ListId);
@@ -67,7 +64,6 @@ namespace TodoApi.SyncServices.Services
                         else if (matchingItem.Description != externalItem.Description ||
                                  matchingItem.Completed != externalItem.Completed)
                         {
-                            // Actualizar item
                             var toUpdate = _mapper.Map<UpdateTodoItemDto>(externalItem);
                             toUpdate.ListId = matchingItem.ListId;
                             await _localItemService.UpdateTodoItemAsync(toUpdate, toUpdate.ListId, matchingItem.Id);
@@ -75,7 +71,46 @@ namespace TodoApi.SyncServices.Services
                     }
                 }
 
-                // 4. (opcional) Detectar si hay listas en local que no están en la externa y subirlas
+                // 5. Propagar creaciones y actualizaciones locales hacia la API externa
+                foreach (var localList in localLists)
+                {
+                    // ¿Existe esta lista en la externa?
+                    var extList = externalLists.FirstOrDefault(el => el.SourceId == localList.Id.ToString());
+
+                    if (extList == null)
+                    {
+                        // Crear lista en la externa
+                        var createDto = _mapper.Map<CreateExternalTodoList>(localList);
+                        await _externalApi.CreateTodoListAsync(createDto);
+                    }
+                    else if (extList.Name != localList.Name)
+                    {
+                        // Actualizar lista en la externa
+                        var updateDto = _mapper.Map<UpdateExternalTodoList>(localList);
+                        await _externalApi.UpdateTodoListAsync(extList.Id, updateDto);
+                    }
+
+                    // Ahora los ítems de esta lista
+                    var localItems = await _localItemService.GetTodoItemsAsync(localList.Id);
+                    foreach (var localItem in localItems)
+                    {
+                        var extItem = extList?.TodoItems.FirstOrDefault(ei => ei.SourceId == localItem.Id.ToString());
+
+                        if (extItem == null)
+                        {
+                            // No existe externo → usamos PUT como upsert
+                            var upsertDto = _mapper.Map<UpdateExternalTodoItem>(localItem);
+                            await _externalApi.UpdateTodoItemAsync(extList.Id, localItem.Id.ToString(), upsertDto);
+                        }
+                        else if (extItem.Description != localItem.Description ||
+                                 extItem.Completed != localItem.Completed)
+                        {
+                            // Actualizar ítem existente
+                            var updateDto = _mapper.Map<UpdateExternalTodoItem>(localItem);
+                            await _externalApi.UpdateTodoItemAsync(extList.Id, extItem.Id, updateDto);
+                        }
+                    }
+                }
 
                 return true;
             }
