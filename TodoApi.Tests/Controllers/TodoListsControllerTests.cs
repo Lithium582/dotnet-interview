@@ -38,7 +38,7 @@ public class TodoListsControllerTests
         var expected = GetFakeTodoLists();
 
         _mockService
-            .Setup(s => s.GetTodoListsAsync())
+            .Setup(s => s.GetTodoListsAsync(false))
             .ReturnsAsync(expected);
 
         // Act

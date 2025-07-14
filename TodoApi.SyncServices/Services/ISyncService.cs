@@ -1,7 +1,9 @@
-﻿namespace TodoApi.SyncServices.Services
+﻿using TodoApi.ExternalContracts.Contracts;
+
+namespace TodoApi.SyncServices.Services
 {
     public interface ISyncService
     {
-        Task<bool> SyncTodoListsAsync();
+        Task<SyncResult> SyncTodoListsAsync();
     }
 }

@@ -4,10 +4,11 @@ using TodoApi.SyncServices.Services;
 
 namespace TodoApi.Controllers
 {
+    [Route("api/sync")]
+    [ApiController]
     public class SyncController : ControllerBase
     {
         private readonly ISyncService _syncService;
-        private readonly ITodoItemService _todoItemService;
 
         public SyncController(ISyncService syncService)
         {
@@ -17,7 +18,7 @@ namespace TodoApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Sync()
         {
-            bool res = await _syncService.SyncTodoListsAsync();
+            var res = await _syncService.SyncTodoListsAsync();
 
             return Ok("Sync succeeded.");
         }
