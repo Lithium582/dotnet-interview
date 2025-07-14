@@ -14,7 +14,7 @@ namespace TodoApi.SyncServices.ExternalAPI
 
         #region "Lists"
 
-        public async Task<List<ExternalTodoList>> GetTodoListsAsync()
+        public async Task<IList<ExternalTodoList>> GetTodoListsAsync()
         {
             return _fakeLists.ToList();
         }

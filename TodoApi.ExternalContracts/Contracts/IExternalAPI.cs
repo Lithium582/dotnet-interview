@@ -11,7 +11,7 @@ namespace TodoApi.ExternalContracts.Contracts
     public interface IExternalAPI
     {
         //Lists
-        Task<List<ExternalTodoList>> GetTodoListsAsync();
+        Task<IList<ExternalTodoList>> GetTodoListsAsync();
         Task<ExternalTodoList> CreateTodoListAsync(CreateExternalTodoList dto);
         Task<ExternalTodoList> UpdateTodoListAsync(string listId, UpdateExternalTodoList dto);
         Task DeleteTodoListAsync(string listId);
