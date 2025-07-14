@@ -185,7 +185,7 @@ namespace TodoApi.SyncServices.Services
         {
             var toUpdate = _mapper.Map<UpdateTodoItemDto>(externalItem);
             toUpdate.ListId = listId;
-            toUpdate.Title = localItem.Title; // Preservás el título original
+            toUpdate.Title = localItem.Title;
             await _localItemService.UpdateTodoItemAsync(toUpdate, listId, localItem.Id);
             result.ItemUpdates++;
         }
