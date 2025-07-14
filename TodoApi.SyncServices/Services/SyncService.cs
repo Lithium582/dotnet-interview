@@ -187,6 +187,10 @@ namespace TodoApi.SyncServices.Services
             toUpdate.ListId = listId;
             toUpdate.Title = localItem.Title;
             await _localItemService.UpdateTodoItemAsync(toUpdate, listId, localItem.Id);
+
+            localItem.Description = externalItem.Description;
+            localItem.Completed = externalItem.Completed;
+
             result.ItemUpdates++;
         }
 
