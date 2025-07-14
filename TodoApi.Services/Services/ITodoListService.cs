@@ -4,7 +4,7 @@ namespace TodoApi.Services.Services
 {
     public interface ITodoListService
     {
-        Task<IList<TodoListDto>> GetTodoListsAsync();
+        Task<IList<TodoListDto>> GetTodoListsAsync(bool includeDeleted = false);
         Task<TodoListDto> GetTodoListAsync(long listId);
         Task<TodoListDto> CreateTodoListAsync(UpdateTodoListDto todoListDto);
         Task<bool> UpdateTodoListAsync(long listId, UpdateTodoListDto todoListDto);

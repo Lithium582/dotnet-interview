@@ -7,12 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AutoMapper" Version="12.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\TodoApi.Data\TodoApi.Data.csproj" />
     <ProjectReference Include="..\TodoApi.ExternalContracts\TodoApi.ExternalContracts.csproj" />
+    <ProjectReference Include="..\TodoApi.Services\TodoApi.Services.csproj" />
   </ItemGroup>
 
 </Project>

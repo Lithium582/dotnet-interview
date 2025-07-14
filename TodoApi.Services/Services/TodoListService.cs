@@ -16,12 +16,12 @@ namespace TodoApi.Services.Services
             _mapper = mapper;
         }
 
-        public async Task<IList<TodoListDto>> GetTodoListsAsync()
+        public async Task<IList<TodoListDto>> GetTodoListsAsync(bool includeDeleted = false)
         {
             var todoLists =
                 await _context.TodoList
-                .Include(l => l.Items)
-                .Where(l => !l.Deleted)
+                .Include(l => l.Items.Where(i => !i.Deleted || includeDeleted))
+                .Where(l => !l.Deleted || includeDeleted)
                 .ToListAsync();
 
             return _mapper.Map<IList<TodoListDto>>(todoLists);
@@ -30,7 +30,7 @@ namespace TodoApi.Services.Services
         public async Task<TodoListDto> GetTodoListAsync(long listId)
         {
             var todoList = await _context.TodoList
-                .Include((l) => l.Items)
+                .Include((l) => l.Items.Where(i => !i.Deleted))
                 .Where((l) => l.Id == listId && !l.Deleted)
                 .FirstOrDefaultAsync();
 

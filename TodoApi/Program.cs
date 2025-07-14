@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using TodoApi.ExternalContracts.Contracts;
 using TodoApi.Services.Services;
+using TodoApi.SyncServices.ExternalAPI;
+using TodoApi.SyncServices.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder
@@ -15,7 +18,13 @@ builder.Logging.AddConsole();
 
 builder.Services.AddScoped<ITodoListService, TodoListService>();
 builder.Services.AddScoped<ITodoItemService, TodoItemService>();
+builder.Services.AddScoped<ISyncService, SyncService>();
+builder.Services.AddScoped<IExternalAPI, FakeExternalAPI>();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+//builder.Services.AddHttpClient<IExternalAPI, ExternalTodoApiClient>(client =>
+//{
+//    client.BaseAddress = new Uri("https://external-api-url.com");
+//});
 
 var app = builder.Build();
 

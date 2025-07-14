@@ -11,4 +11,6 @@ public class TodoItem
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public bool Deleted { get; set; }
+    public string? ExternalId { get; set; }
+
 }
