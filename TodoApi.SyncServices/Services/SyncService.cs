@@ -8,6 +8,7 @@ namespace TodoApi.SyncServices.Services
 {
     public class SyncService : ISyncService
     {
+        #region "Constructor and initialization"
         private readonly ITodoListService _localListService;
         private readonly ITodoItemService _localItemService;
         private readonly IExternalAPI _externalApi;
@@ -28,28 +29,23 @@ namespace TodoApi.SyncServices.Services
             _logger = logger;
         }
 
-        public async Task<SyncResult> SyncTodoListsAsync()
+        #endregion
+
+        #region "Main methods"
+        public async Task<SyncResult?> SyncTodoListsAsync()
         {
             try
             {
                 // Getting lists from local
-                var localLists = await _localListService.GetTodoListsAsync(true);
+                var localLists = await _localListService.GetTodoListsAsync(includeDeleted: true);
 
                 // Getting lists from external API
                 var externalLists = await _externalApi.GetTodoListsAsync();
 
-                SyncResult fromExternalToLocal = await SyncFromExternalToLocal(localLists, externalLists);
-                SyncResult fromLocalToExternal = await SyncFromLocalToExternal(localLists, externalLists);
+                SyncResult externalToLocal = await SyncFromExternalToLocal(localLists, externalLists);
+                SyncResult localToExternal = await SyncFromLocalToExternal(localLists, externalLists);
 
-                return (new SyncResult
-                {
-                    ItemCreations = fromExternalToLocal.ItemCreations + fromLocalToExternal.ItemCreations,
-                    ItemUpdates = fromExternalToLocal.ItemUpdates + fromLocalToExternal.ItemUpdates,
-                    ItemDeleted = fromExternalToLocal.ItemDeleted + fromLocalToExternal.ItemDeleted,
-                    ListCreations = fromExternalToLocal.ListCreations + fromLocalToExternal.ListCreations,
-                    ListUpdates = fromExternalToLocal.ListUpdates + fromLocalToExternal.ListUpdates,
-                    ListDeleted = fromExternalToLocal.ListDeleted + fromLocalToExternal.ListDeleted
-                });
+                return CombineResults(externalToLocal, localToExternal);
             }
             catch (Exception ex)
             {
@@ -68,58 +64,21 @@ namespace TodoApi.SyncServices.Services
             {
                 try
                 {
-                    var existing = localLists.FirstOrDefault(l => l.Id.ToString() == externalList.SourceId || l.ExternalId == externalList.Id);
+                    var localListExisting = FindLocalList(localLists, externalList);
 
-                    if (existing == null) //External list does not exist on local
+                    if (localListExisting == null) //External list does not exist on local
                     {
-                        syncResult.ListCreations++;
-                        var toCreate = _mapper.Map<UpdateTodoListDto>(externalList);
-                        existing = await _localListService.CreateTodoListAsync(toCreate);
-
-                        localLists.Add(existing);
+                        localListExisting = await CreateLocalListFromExternal(externalList, syncResult);
+                        localLists.Add(localListExisting);
                     }
-                    else if (ListChanged(existing, externalList))
+                    else if (ListChanged(localListExisting, externalList))
                     {
-                        syncResult.ListUpdates++;
-                        existing.Name = externalList.Name;
-
-                        var toUpdate = _mapper.Map<UpdateTodoListDto>(existing);
-                        await _localListService.UpdateTodoListAsync(existing.Id, toUpdate);
+                        await UpdateLocalListFromExternal(localListExisting, externalList, syncResult);
                     }
-                    else
-                    {
-                        foreach (var externalItem in externalList.TodoItems)
-                        {
-                            try
-                            {
-                                var localItems = existing.Items ?? new List<TodoItemDto>();
-                                var matchingItem = localItems.FirstOrDefault(i => i.Id.ToString() == externalItem.SourceId || i.ExternalId == externalItem.Id);
 
-                                if (matchingItem == null)
-                                {
-                                    syncResult.ItemCreations++;
-                                    var toCreate = _mapper.Map<UpdateTodoItemDto>(externalItem);
-                                    toCreate.ListId = existing?.Id ?? 0;
-                                    await _localItemService.CreateTodoItemAsync(toCreate, toCreate.ListId);
-                                }
-                                else if (ItemChanged(matchingItem, externalItem))
-                                {
-                                    syncResult.ItemUpdates++;
-                                    var toUpdate = _mapper.Map<UpdateTodoItemDto>(externalItem);
-                                    toUpdate.ListId = matchingItem.ListId;
-                                    toUpdate.Title = matchingItem.Title;
-
-                                    await _localItemService.UpdateTodoItemAsync(toUpdate, toUpdate.ListId, matchingItem.Id);
-                                }
-                            }
-                            catch (Exception itemEx)
-                            {
-                                _logger.LogError(itemEx, $"Error syncing external item {externalItem.Id} in list {externalList.Id}");
-                            }
-                        }
-                    }   
+                    await SyncItemsFromExternalList(localListExisting, externalList.TodoItems, syncResult);
                 }
-                catch(Exception listEx)
+                catch (Exception listEx)
                 {
                     _logger.LogError(listEx, $"Error syncing external list {externalList.Id} to local");
                 }
@@ -136,87 +95,16 @@ namespace TodoApi.SyncServices.Services
             {
                 try
                 {
-                    var extList = externalLists.FirstOrDefault(el => el.SourceId == localList.Id.ToString() || localList.ExternalId == el.Id);
+                    var extList = FindExternalList(externalLists, localList);
 
-                    if (extList == null) //List does not exist on external
+                    if (extList == null)
                     {
-                        if (!String.IsNullOrEmpty(localList.ExternalId)) //List was already synced to External. So, if it does not exist, it means it was deleted on external
-                        {
-                            await _localListService.DeleteTodoListAsync(localList.Id);
-                        }
-                        else if (!localList.Deleted) //Checks if list was deleted previously, so it does not create it again
-                        {
-                            syncResult.ListCreations++;
-                            var createDto = _mapper.Map<CreateExternalTodoList>(localList);
-                            extList = await _externalApi.CreateTodoListAsync(createDto);
-
-                            //Updates ExternalId on local
-                            var toUpdate = _mapper.Map<UpdateTodoListDto>(extList);
-                            await _localListService.UpdateTodoListAsync(localList.Id, toUpdate);
-                        }
-                    }
-                    else if (localList.Deleted) //List was deleted on local but still exists on external
-                    {
-                        await _externalApi.DeleteTodoListAsync(localList.ExternalId);
+                        await HandleMissingExternalList(localList, syncResult);
                     }
                     else
                     {
-                        if (ListChanged(localList, extList)) //Updates list just if there are changes on name
-                        {
-                            syncResult.ListUpdates++;
-
-                            var updateListDto = _mapper.Map<UpdateExternalTodoList>(localList);
-                            await _externalApi.UpdateTodoListAsync(extList.Id, updateListDto);
-                        }
-
-                        foreach (var localItem in localList.Items)
-                        {   
-                            try
-                            {
-                                var externalItems = extList.TodoItems ?? new List<ExternalTodoItem>(); //Checks for the items of existing lists
-                                var extItem = extList.TodoItems.FirstOrDefault(ei => ei.SourceId == localItem.Id.ToString());
-
-                                if (extItem == null)
-                                {
-                                    if (!String.IsNullOrEmpty(localItem.ExternalId)) //Item was already synced to External. So, if it does not exist, it means it was deleted on external
-                                    {
-                                        await _localItemService.DeleteTodoItemAsync(localList.Id, localItem.Id);
-                                    }
-                                    else if (!localItem.Deleted) //Checks if list was deleted previously, so it does not create it again
-                                    {
-                                        syncResult.ItemCreations++;
-
-                                        var createItem = _mapper.Map<UpdateExternalTodoItem>(localItem);
-                                        extItem = await _externalApi.UpdateTodoItemAsync(extList.Id, localItem.Id.ToString(), createItem);
-
-                                        var toUpdate = _mapper.Map<UpdateTodoItemDto>(extItem); //Updates ExternalId on local
-                                        toUpdate.Title = localItem.Title;
-
-                                        await _localItemService.UpdateTodoItemAsync(toUpdate, localList.Id, localItem.Id);
-                                    }
-                                }
-                                else if (localItem.Deleted) //Item was deleted on local but still exists on external
-                                {
-                                    await _externalApi.DeleteTodoItemAsync(localList.ExternalId, localItem.ExternalId);
-                                }
-                                else
-                                {
-                                    if (ItemChanged(localItem, extItem))
-                                    {
-                                        syncResult.ItemUpdates++;
-
-                                        //Updates item on External
-                                        var updateItemDto = _mapper.Map<UpdateExternalTodoItem>(localItem);
-                                        await _externalApi.UpdateTodoItemAsync(extList.Id, extItem.Id, updateItemDto);
-                                    }
-                                }
-                            }
-                            catch(Exception itemEx)
-                            {
-                                _logger.LogError(itemEx, $"Error syncing local item {localItem.Id} in list {localList.Id}");
-                            }
-                        }
-                    }
+                        await SyncLocalListToExternal(localList, extList, syncResult);
+                    }   
                 }
                 catch (Exception listEx)
                 {
@@ -226,6 +114,191 @@ namespace TodoApi.SyncServices.Services
 
             return syncResult;
         }
+
+        #endregion
+
+        #region "Logic Aux methods - LocalFromExternal"
+
+        private TodoListDto FindLocalList(IList<TodoListDto> localLists, ExternalTodoList externalList)
+        {
+            return localLists.FirstOrDefault(l =>
+                l.Id.ToString() == externalList.SourceId || l.ExternalId == externalList.Id);
+        }
+
+        private async Task<TodoListDto> CreateLocalListFromExternal(ExternalTodoList externalList, SyncResult result)
+        {
+            var toCreate = _mapper.Map<UpdateTodoListDto>(externalList);
+            var created = await _localListService.CreateTodoListAsync(toCreate);
+            result.ListCreations++;
+            return created;
+        }
+
+        private async Task UpdateLocalListFromExternal(TodoListDto local, ExternalTodoList external, SyncResult result)
+        {
+            local.Name = external.Name;
+            var toUpdate = _mapper.Map<UpdateTodoListDto>(local);
+            await _localListService.UpdateTodoListAsync(local.Id, toUpdate);
+            result.ListUpdates++;
+        }
+
+        private async Task SyncItemsFromExternalList(TodoListDto localList, IList<ExternalTodoItem> externalItems, SyncResult result)
+        {
+            var localItems = localList.Items ?? new List<TodoItemDto>();
+
+            foreach (var externalItem in externalItems)
+            {
+                try
+                {
+                    var localItem = FindLocalItem(localItems, externalItem);
+
+                    if (localItem == null)
+                    {
+                        await CreateLocalItemFromExternal(localList.Id, externalItem, result);
+                    }
+                    else if (ItemChanged(localItem, externalItem))
+                    {
+                        await UpdateLocalItemFromExternal(localList.Id, localItem, externalItem, result);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error syncing item {externalItem.Id} in list {localList.Id}");
+                }
+            }
+        }
+
+        private TodoItemDto FindLocalItem(IEnumerable<TodoItemDto> localItems, ExternalTodoItem externalItem)
+        {
+            return localItems.FirstOrDefault(i =>
+                i.Id.ToString() == externalItem.SourceId || i.ExternalId == externalItem.Id);
+        }
+
+        private async Task CreateLocalItemFromExternal(long listId, ExternalTodoItem externalItem, SyncResult result)
+        {
+            var toCreate = _mapper.Map<UpdateTodoItemDto>(externalItem);
+            toCreate.ListId = listId;
+            await _localItemService.CreateTodoItemAsync(toCreate, listId);
+            result.ItemCreations++;
+        }
+
+        private async Task UpdateLocalItemFromExternal(long listId, TodoItemDto localItem, ExternalTodoItem externalItem, SyncResult result)
+        {
+            var toUpdate = _mapper.Map<UpdateTodoItemDto>(externalItem);
+            toUpdate.ListId = listId;
+            toUpdate.Title = localItem.Title; // Preservás el título original
+            await _localItemService.UpdateTodoItemAsync(toUpdate, listId, localItem.Id);
+            result.ItemUpdates++;
+        }
+
+        #endregion
+
+        #region "Logic Aux methods - ExternalToLocal"
+        private ExternalTodoList FindExternalList(IEnumerable<ExternalTodoList> externalLists, TodoListDto localList)
+        {
+            return externalLists.FirstOrDefault(ext =>
+                ext.SourceId == localList.Id.ToString() || ext.Id == localList.ExternalId);
+        }
+
+        private async Task HandleMissingExternalList(TodoListDto localList, SyncResult result)
+        {
+            if (!string.IsNullOrEmpty(localList.ExternalId)) //List was already synced to External. So, if it does not exist, it means it was deleted on external
+            {
+                await _localListService.DeleteTodoListAsync(localList.Id);
+                result.ListDeleted++;
+            }
+            else if (!localList.Deleted) //Checks if list was deleted previously, so it does not create it again
+            {
+                var createDto = _mapper.Map<CreateExternalTodoList>(localList);
+                var createdExternal = await _externalApi.CreateTodoListAsync(createDto);
+
+                var updateDto = _mapper.Map<UpdateTodoListDto>(createdExternal); //Updates ExternalId on local
+                await _localListService.UpdateTodoListAsync(localList.Id, updateDto);
+
+                result.ListCreations++;
+            }
+        }
+
+        private async Task SyncLocalListToExternal(TodoListDto localList, ExternalTodoList externalList, SyncResult result)
+        {
+            if (localList.Deleted) //List was deleted on local but still exists on external
+            {
+                await _externalApi.DeleteTodoListAsync(localList.ExternalId);
+                result.ListDeleted++;
+                return;
+            }
+
+            if (ListChanged(localList, externalList)) //Updates list just if there are changes on name
+            {
+                var updateDto = _mapper.Map<UpdateExternalTodoList>(localList);
+                await _externalApi.UpdateTodoListAsync(externalList.Id, updateDto);
+                result.ListUpdates++;
+            }
+
+            await SyncLocalItemsToExternal(localList, externalList, result);
+        }
+
+        private async Task SyncLocalItemsToExternal(TodoListDto localList, ExternalTodoList externalList, SyncResult result)
+        {
+            foreach (var localItem in localList.Items)
+            {
+                try
+                {
+                    var extItem = externalList.TodoItems.FirstOrDefault(ei =>
+                        ei.SourceId == localItem.Id.ToString() || ei.Id == localItem.ExternalId);
+
+                    if (extItem == null)
+                    {
+                        await HandleMissingExternalItem(localList, localItem, result);
+                    }
+                    else
+                    {
+                        await SyncExistingItemToExternal(localList, localItem, extItem, result);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error syncing item {localItem.Id} in list {localList.Id}");
+                }
+            }
+        }
+
+        private async Task HandleMissingExternalItem(TodoListDto list, TodoItemDto item, SyncResult result)
+        {
+            if (!string.IsNullOrEmpty(item.ExternalId)) //Item was already synced to External. So, if it does not exist, it means it was deleted on external
+            {
+                await _localItemService.DeleteTodoItemAsync(list.Id, item.Id);
+                result.ItemDeleted++;
+            }
+            else if (!item.Deleted) //Checks if list was deleted previously, so it does not create it again
+            {
+                var createDto = _mapper.Map<UpdateExternalTodoItem>(item);
+                var createdExternal = await _externalApi.UpdateTodoItemAsync(list.ExternalId, item.Id.ToString(), createDto);
+
+                var updateLocalDto = _mapper.Map<UpdateTodoItemDto>(createdExternal); //Updates ExternalId on local
+                updateLocalDto.Title = item.Title;
+                await _localItemService.UpdateTodoItemAsync(updateLocalDto, list.Id, item.Id);
+
+                result.ItemCreations++;
+            }
+        }
+
+        private async Task SyncExistingItemToExternal(TodoListDto list, TodoItemDto localItem, ExternalTodoItem externalItem, SyncResult result)
+        {
+            if (localItem.Deleted) //Item was deleted on local but still exists on external
+            {
+                await _externalApi.DeleteTodoItemAsync(list.ExternalId, localItem.ExternalId);
+                result.ItemDeleted++;
+            }
+            else if (ItemChanged(localItem, externalItem))
+            {
+                var updateDto = _mapper.Map<UpdateExternalTodoItem>(localItem);
+                await _externalApi.UpdateTodoItemAsync(list.ExternalId, externalItem.Id, updateDto);
+
+                result.ItemUpdates++;
+            }
+        }
+
+        #endregion
 
         #region "Aux methods"
 
@@ -240,6 +313,18 @@ namespace TodoApi.SyncServices.Services
             return (local.Name != external.Name);
         }
 
+        private SyncResult CombineResults(SyncResult a, SyncResult b)
+        {
+            return (new SyncResult
+            {
+                ItemCreations = a.ItemCreations + b.ItemCreations,
+                ItemUpdates = a.ItemUpdates + b.ItemUpdates,
+                ItemDeleted = a.ItemDeleted + b.ItemDeleted,
+                ListCreations = a.ListCreations + b.ListCreations,
+                ListUpdates = a.ListUpdates + b.ListUpdates,
+                ListDeleted = a.ListDeleted + b.ListDeleted
+            });
+        }
         #endregion
     }
 }
