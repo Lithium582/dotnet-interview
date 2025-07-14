@@ -1,23 +1,38 @@
-Un [HttpGet("status")] para saber si todo está sincronizado o pasar parámetros para sincronizar una sola lista
-- Created a TodoApi.SyncServices project where I added all the logic about the connection with External API. "ExternalTodoApiClient" class is an empty class that, when connected to the actual External API, will be used to sync items
-- I registered the client on the Program.cs with a fake URL. Changing this URL is needed when this class is ready to work with ExternalAPI
-- 
+I created a TodoApi.SyncServices project where I added all the logic for connecting with the External API.
+The "ExternalTodoApiClient" class is currently empty and will be used to sync items in production, once connected to the actual External API.
+In Program.cs class, this client is registered with a placeholder URL (commented out to avoid issues). This URL will need to be updated when the class is ready to work with the prod External API.
 
-SOME CHANGES NEEDED
-- It was decided to create new CreateDate and UpdateDate attributes on TodoList and TodoItem. This way, is easy to get if a List or Item was modified on external API when syncing
-- It was also decided to manage deletions as logical deletions. Again, it make easier to manage deletions on external API gracefully
+---------------------------------------------
+HOW TO TEST IT?
+
+A FakeExternalAPI class was created, to simulate the behavior of the externalAPI.
+When SyncController runs and Sync method is called, the SyncService communicates with this FakeExternalAPI (which contaings some sample lists) and syncs the content of Database accordingly.
+It was also provided a set of unit tests to check the SyncService is working as expected.
+
+---------------------------------------------
+
+CHANGES MADE (to the original TodoAPI, from the technical interview)
+- Added CreatedAt and UpdatedAt attributes to TodoList and TodoItem models to easily detect modifications during sync with the External API. It also makes sense for these timestamps to exist locally if they exist externally.
+- Managed deletions as soft deletions on the local side. Since we can't modify the External API, soft deletes on the local side make it easier to handle deletions gracefully during synchronization.
+
+---------------------------------------------
 
 ASSUMPTIONS
-- I assumed that I cannot modify the models we created on the tech interview. So I worked over the assumption that there was a difference in models
-- On the tech interview, we created Items with Title and Description. I decided to keep title, and when creating a new item from external source, just take Description twice, as in ExternalAPI there's no Title property
+I assumed the original models from the technical interview cannot be modified directly, so I worked under the assumption that there are differences between the local and external models.
+In the technical interview, TodoItem included both Title and Description. Since the External API does not have a Title property, I chose to keep Title locally and duplicate the Description value when creating new items from the external source.
+
+---------------------------------------------
 
 IMPROVEMENTS
-- We could add some filters to the ExternalAPI. For example, just update the not completed Items. Or maybe mark some items as "can't modify" and then try to avoid them
-I didn't try that way because ExternalAPI just have a GetAll, but I think we can improve it a lot
+If the External API supported soft deletions, detecting items to delete locally would be much simpler.
+We could add filters to the External API’s GetAll method, such as fetching only incomplete items or marking some items as "read-only" to prevent modification.
 
-- I didn't add a real exception control. Thought about it but didn't want to add more complexity to this test. Nevertheless, I know a prod app should have exception control, so an unexpected exception don't break the app
-- A couple of new endpoints could be created on external API, so the sync service can send a list of TodoLists to create or update. Same thing with TodoItems
-- Potential bug on how deletions are being managed:
+---------------------------------------------
+
+SOME FINAL COMMENTS
+
+I didn’t add full exception handling inside the API to keep complexity low for this test. However, I recognize that a production app should have robust exception control so that unexpected errors don’t break the app.
+Potential bug on how deletions are being managed:
 	 - It could happen that we create a new Item on our local. Then, we try to sync on ExternalAPI, but for some reason, it is created there but our API does not receive the ExternalID. It will be the case that, on next Sync, this Item (or list) will be created again on external
 		- Solution: we can create a new attribute "Synced_On", where we save date of last sync before send the new item or list to the External API. This way, we can double check, on ExternalID and on SyncedOn, to get if this list is needed to be sent again
 		- We can use some kind of transactional behaviour
